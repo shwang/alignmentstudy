@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -86,18 +86,18 @@ def depthFirstSearch(problem):
     print "Is the start a goal?", problem.isGoalState(problem.getStartState())
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return search(util.Stack(), problem)
 
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return search(util.Queue(), problem)
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    priorityFn = lambda node: node.cost
+    return search(util.PriorityQueueWithFunction(priorityFn), problem)
 
 def nullHeuristic(state, problem=None):
     """
@@ -109,7 +109,52 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    priorityFn = lambda node: node.cost + heuristic(node.state, problem)
+    return search(util.PriorityQueueWithFunction(priorityFn), problem)
+
+def search(struct, problem):
+        """
+            struct: a data structure that implements push, pop, and isEmpty.
+            problem: the SearchProblem to solve.
+
+            Executes a general graph search using the given data structure.
+            Returns a list of Directions if a solution is found, otherwise
+            returns None.
+        """
+        visited = set()
+
+        struct.push(Node(problem.getStartState()))
+        while not struct.isEmpty():
+            curr = struct.pop()
+
+            if curr.state in visited:
+                continue
+            visited.add(curr.state)
+
+            if problem.isGoalState(curr.state):
+                return curr.plan
+
+            for successor, action, cost in problem.getSuccessors(curr.state):
+                struct.push(Node(successor, action, curr))
+
+class Node:
+    """
+        A Node for search problems.
+    """
+
+    def __init__(self, state, action=None, parent=None, cost=0):
+        self.state = state
+        self.plan = []
+        self.cost = cost
+
+        if action == None and parent != None:
+            raise Exception("Must define action if parent is defined")
+
+        if parent != None:
+            self.plan += parent.plan
+            self.cost += parent.cost
+        if action != None:
+            self.plan += [action]
 
 
 # Abbreviations
