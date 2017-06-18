@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -30,7 +30,6 @@ WALL_COLOR = formatColor(0.0/255.0, 51.0/255.0, 255.0/255.0)
 INFO_PANE_COLOR = formatColor(.4,.4,0)
 SCORE_COLOR = formatColor(.9, .9, .9)
 PACMAN_OUTLINE_WIDTH = 2
-PACMAN_CAPTURE_OUTLINE_WIDTH = 4
 
 GHOST_COLORS = []
 GHOST_COLORS.append(formatColor(.9,0,0)) # Red
@@ -65,7 +64,13 @@ PACMAN_SCALE = 0.5
 #pacman_speed = 0.25
 
 # Food
-FOOD_COLOR = formatColor(1,1,1)
+FOOD_COLORS = []
+FOOD_COLORS.append(formatColor(.9,0,0)) # Red
+FOOD_COLORS.append(formatColor(0,.3,.9)) # Blue
+FOOD_COLORS.append(formatColor(.98,.41,.07)) # Orange
+FOOD_COLORS.append(formatColor(.1,.75,.7)) # Green
+FOOD_COLORS.append(formatColor(1.0,0.6,0.0)) # Yellow
+FOOD_COLORS.append(formatColor(.4,0.13,0.91)) # Purple
 FOOD_SIZE = 0.1
 
 # Laser
@@ -153,13 +158,12 @@ class InfoPane:
 
 
 class PacmanGraphics:
-    def __init__(self, zoom=1.0, frameTime=0.0, capture=False):
+    def __init__(self, zoom=1.0, frameTime=0.0):
         self.have_window = 0
         self.currentGhostImages = {}
         self.pacmanImage = None
         self.zoom = zoom
         self.gridSize = DEFAULT_GRID_SIZE * zoom
-        self.capture = capture
         self.frameTime = frameTime
 
     def checkNullDisplay(self):
@@ -219,25 +223,10 @@ class PacmanGraphics:
                 self.agentImages.append( (agent, image) )
         refresh()
 
-    def swapImages(self, agentIndex, newState):
-        """
-          Changes an image from a ghost to a pacman or vis versa (for capture)
-        """
-        prevState, prevImage = self.agentImages[agentIndex]
-        for item in prevImage: remove_from_screen(item)
-        if newState.isPacman:
-            image = self.drawPacman(newState, agentIndex)
-            self.agentImages[agentIndex] = (newState, image )
-        else:
-            image = self.drawGhost(newState, agentIndex)
-            self.agentImages[agentIndex] = (newState, image )
-        refresh()
-
     def update(self, newState):
         agentIndex = newState._agentMoved
         agentState = newState.agentStates[agentIndex]
 
-        if self.agentImages[agentIndex][0].isPacman != agentState.isPacman: self.swapImages(agentIndex, agentState)
         prevState, prevImage = self.agentImages[agentIndex]
         if agentState.isPacman:
             self.animatePacman(agentState, prevState, prevImage)
@@ -272,11 +261,6 @@ class PacmanGraphics:
         width = PACMAN_OUTLINE_WIDTH
         outlineColor = PACMAN_COLOR
         fillColor = PACMAN_COLOR
-
-        if self.capture:
-            outlineColor = TEAM_COLORS[index % 2]
-            fillColor = GHOST_COLORS[index]
-            width = PACMAN_CAPTURE_OUTLINE_WIDTH
 
         return [circle(screen_point, PACMAN_SCALE * self.gridSize,
                        fillColor = fillColor, outlineColor = outlineColor,
@@ -431,8 +415,6 @@ class PacmanGraphics:
     def drawWalls(self, wallMatrix):
         wallColor = WALL_COLOR
         for xNum, x in enumerate(wallMatrix):
-            if self.capture and (xNum * 2) < wallMatrix.width: wallColor = TEAM_COLORS[0]
-            if self.capture and (xNum * 2) >= wallMatrix.width: wallColor = TEAM_COLORS[1]
 
             for yNum, cell in enumerate(x):
                 if cell: # There's a wall here
@@ -523,14 +505,12 @@ class PacmanGraphics:
 
     def drawFood(self, foodMatrix ):
         foodImages = []
-        color = FOOD_COLOR
         for xNum, x in enumerate(foodMatrix):
-            if self.capture and (xNum * 2) <= foodMatrix.width: color = TEAM_COLORS[0]
-            if self.capture and (xNum * 2) > foodMatrix.width: color = TEAM_COLORS[1]
             imageRow = []
             foodImages.append(imageRow)
             for yNum, cell in enumerate(x):
                 if cell: # There's food here
+                    color = FOOD_COLORS[cell]
                     screen = self.to_screen((xNum, yNum ))
                     dot = circle( screen,
                                   FOOD_SIZE * self.gridSize,
@@ -602,17 +582,15 @@ class PacmanGraphics:
                 # Fog of war
                 color = [0.0,0.0,0.0]
                 colors = GHOST_VEC_COLORS[1:] # With Pacman
-                if self.capture: colors = GHOST_VEC_COLORS
                 for weight, gcolor in zip(weights, colors):
                     color = [min(1.0, c + 0.95 * g * weight ** .3) for c,g in zip(color, gcolor)]
                 changeColor(image, formatColor(*color))
         refresh()
 
 class FirstPersonPacmanGraphics(PacmanGraphics):
-    def __init__(self, zoom = 1.0, showGhosts = True, capture = False, frameTime=0):
+    def __init__(self, zoom = 1.0, showGhosts = True, frameTime=0):
         PacmanGraphics.__init__(self, zoom, frameTime=frameTime)
         self.showGhosts = showGhosts
-        self.capture = capture
 
     def initialize(self, state, isBlue = False):
 

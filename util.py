@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -18,7 +18,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -612,36 +612,6 @@ import time
 class TimeoutFunctionException(Exception):
     """Exception to raise on a timeout"""
     pass
-
-
-class TimeoutFunction:
-    def __init__(self, function, timeout):
-        self.timeout = timeout
-        self.function = function
-
-    def handle_timeout(self, signum, frame):
-        raise TimeoutFunctionException()
-
-    def __call__(self, *args, **keyArgs):
-        # If we have SIGALRM signal, use it to cause an exception if and
-        # when this function runs too long.  Otherwise check the time taken
-        # after the method has returned, and throw an exception then.
-        if hasattr(signal, 'SIGALRM'):
-            old = signal.signal(signal.SIGALRM, self.handle_timeout)
-            signal.alarm(self.timeout)
-            try:
-                result = self.function(*args, **keyArgs)
-            finally:
-                signal.signal(signal.SIGALRM, old)
-            signal.alarm(0)
-        else:
-            startTime = time.time()
-            result = self.function(*args, **keyArgs)
-            timeElapsed = time.time() - startTime
-            if timeElapsed >= self.timeout:
-                self.handle_timeout(None, None)
-        return result
-
 
 
 _ORIGINAL_STDOUT = None

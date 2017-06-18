@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -103,7 +103,6 @@ class GameState:
 
         # Let agent's logic deal with its action's effects on the board
         if agentIndex == 0:  # Pacman is moving
-            state.data._eaten = [False for i in range(state.getNumAgents())]
             PacmanRules.applyAction( state, action )
         else:                # A ghost is moving
             GhostRules.applyAction( state, action, agentIndex )
@@ -174,7 +173,12 @@ class GameState:
         return self.data.capsules
 
     def getNumFood( self ):
-        return self.data.food.count()
+        count = 0
+        for x in self.data.food:
+            for e in x:
+                if e:
+                    count += 1
+        return count
 
     def getFood(self):
         """
@@ -271,11 +275,11 @@ class ClassicGameRules:
     def __init__(self, timeout=30):
         self.timeout = timeout
 
-    def newGame( self, layout, pacmanAgent, ghostAgents, display, quiet = False, catchExceptions=False):
+    def newGame( self, layout, pacmanAgent, ghostAgents, display, quiet = False):
         agents = [pacmanAgent] + ghostAgents[:layout.getNumGhosts()]
         initState = GameState()
         initState.initialize( layout, len(ghostAgents) )
-        game = Game(agents, display, self, catchExceptions=catchExceptions)
+        game = Game(agents, display, self)
         game.state = initState
         self.initialState = initState.deepCopy()
         self.quiet = quiet
@@ -359,10 +363,12 @@ class PacmanRules:
     def consume( position, state ):
         x,y = position
         # Eat food
-        if state.data.food[x][y]:
-            state.data.scoreChange += 10
+        f = state.data.food[x][y]
+        if f:  # TODO: track number of diferent foods eaten
+            state.data.scoreChange += 10  # XXX: This is incorrect.
+            state.data.eatCounts[f] += 1
             state.data.food = state.data.food.copy()
-            state.data.food[x][y] = False
+            state.data.food[x][y] = 0
             state.data._foodEaten = position
             # TODO: cache numFood?
             numFood = state.getNumFood()
@@ -438,8 +444,6 @@ class GhostRules:
             state.data.scoreChange += 200
             GhostRules.placeGhost(state, ghostState)
             ghostState.scaredTimer = 0
-            # Added for first-person
-            state.data._eaten[agentIndex] = True
         else:
             if not state.data._win:
                 state.data.scoreChange -= 500
@@ -519,8 +523,6 @@ def readCommand( argv ):
                       help=default('How many episodes are training (suppresses output)'), default=0)
     parser.add_option('--frameTime', dest='frameTime', type='float',
                       help=default('Time to delay between frames; <0 means keyboard'), default=0.1)
-    parser.add_option('-c', '--catchExceptions', action='store_true', dest='catchExceptions',
-                      help='Turns on exception handling and timeouts during games', default=False)
     parser.add_option('--timeout', dest='timeout', type='int',
                       help=default('Maximum length of time an agent can spend computing in a single game'), default=30)
 
@@ -568,7 +570,6 @@ def readCommand( argv ):
         args['display'] = graphicsDisplay.PacmanGraphics(options.zoom, frameTime = options.frameTime)
     args['numGames'] = options.numGames
     args['record'] = options.record
-    args['catchExceptions'] = options.catchExceptions
     args['timeout'] = options.timeout
 
     # Special case: recorded games don't use the runGames method or args structure
@@ -625,7 +626,7 @@ def replayGame( layout, actions, display ):
 
     display.finish()
 
-def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0, catchExceptions=False, timeout=30 ):
+def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0, timeout=30 ):
     import __main__
     __main__.__dict__['_display'] = display
 
@@ -642,7 +643,7 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
         else:
             gameDisplay = display
             rules.quiet = False
-        game = rules.newGame( layout, pacman, ghosts, gameDisplay, beQuiet, catchExceptions)
+        game = rules.newGame( layout, pacman, ghosts, gameDisplay, beQuiet)
         game.run()
         if not beQuiet: games.append(game)
 

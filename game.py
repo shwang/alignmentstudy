@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -378,14 +378,14 @@ class GameStateData:
         """
         if prevState != None:
             self.food = prevState.food.shallowCopy()
+            self.eatCounts = prevState.eatCounts[:]
             self.capsules = prevState.capsules[:]
             self.agentStates = self.copyAgentStates( prevState.agentStates )
             self.layout = prevState.layout
-            self._eaten = prevState._eaten
             self.score = prevState.score
 
-        self._foodEaten = None
-        self._foodAdded = None
+        self.eatCounts = [0] * 10  # A count for each possible digit in layout
+        self._foodEaten = None  # Used by graphics display to remove food
         self._capsuleEaten = None
         self._agentMoved = None
         self._lose = False
@@ -398,7 +398,6 @@ class GameStateData:
         state.layout = self.layout.deepCopy()
         state._agentMoved = self._agentMoved
         state._foodEaten = self._foodEaten
-        state._foodAdded = self._foodAdded
         state._capsuleEaten = self._capsuleEaten
         return state
 
@@ -457,9 +456,9 @@ class GameStateData:
 
         return str(map) + ("\nScore: %d\n" % self.score)
 
-    def _foodWallStr( self, hasFood, hasWall ):
-        if hasFood:
-            return '.'
+    def _foodWallStr( self, foodNum, hasWall ):
+        if foodNum:
+            return str(foodNum)
         elif hasWall:
             return '%'
         else:
@@ -476,20 +475,13 @@ class GameStateData:
 
     def _ghostStr( self, dir ):
         return 'G'
-        if dir == Directions.NORTH:
-            return 'M'
-        if dir == Directions.SOUTH:
-            return 'W'
-        if dir == Directions.WEST:
-            return '3'
-        return 'E'
 
     def initialize( self, layout, numGhostAgents ):
         """
         Creates an initial game state from a layout array (see layout.py).
         """
         self.food = layout.food.copy()
-        #self.capsules = []
+        self.eatCounts = [0] * 10
         self.capsules = layout.capsules[:]
         self.layout = layout
         self.score = 0
@@ -502,7 +494,6 @@ class GameStateData:
                 if numGhosts == numGhostAgents: continue # Max ghosts reached already
                 else: numGhosts += 1
             self.agentStates.append( AgentState( Configuration( pos, Directions.STOP), isPacman) )
-        self._eaten = [False for a in self.agentStates]
 
 try:
     import boinc
@@ -515,7 +506,7 @@ class Game:
     The Game manages the control flow, soliciting actions from agents.
     """
 
-    def __init__( self, agents, display, rules, startingIndex=0, muteAgents=False, catchExceptions=False ):
+    def __init__( self, agents, display, rules, startingIndex=0, muteAgents=False):
         self.agentCrashed = False
         self.agents = agents
         self.display = display
@@ -523,7 +514,6 @@ class Game:
         self.startingIndex = startingIndex
         self.gameOver = False
         self.muteAgents = muteAgents
-        self.catchExceptions = catchExceptions
         self.moveHistory = []
         self.totalAgentTimes = [0 for agent in agents]
         self.totalAgentTimeWarnings = [0 for agent in agents]
@@ -584,29 +574,7 @@ class Game:
                 self._agentCrash(i, quiet=True)
                 return
             if ("registerInitialState" in dir(agent)):
-                self.mute(i)
-                if self.catchExceptions:
-                    try:
-                        timed_func = TimeoutFunction(agent.registerInitialState, int(self.rules.getMaxStartupTime(i)))
-                        try:
-                            start_time = time.time()
-                            timed_func(self.state.deepCopy())
-                            time_taken = time.time() - start_time
-                            self.totalAgentTimes[i] += time_taken
-                        except TimeoutFunctionException:
-                            print >>sys.stderr, "Agent %d ran out of time on startup!" % i
-                            self.unmute()
-                            self.agentTimeout = True
-                            self._agentCrash(i, quiet=True)
-                            return
-                    except Exception,data:
-                        self._agentCrash(i, quiet=False)
-                        self.unmute()
-                        return
-                else:
-                    agent.registerInitialState(self.state.deepCopy())
-                ## TODO: could this exceed the total time
-                self.unmute()
+                agent.registerInitialState(self.state.deepCopy())
 
         agentIndex = self.startingIndex
         numAgents = len( self.agents )
@@ -615,89 +583,21 @@ class Game:
             # Fetch the next agent
             agent = self.agents[agentIndex]
             move_time = 0
-            skip_action = False
             # Generate an observation of the state
             if 'observationFunction' in dir( agent ):
-                self.mute(agentIndex)
-                if self.catchExceptions:
-                    try:
-                        timed_func = TimeoutFunction(agent.observationFunction, int(self.rules.getMoveTimeout(agentIndex)))
-                        try:
-                            start_time = time.time()
-                            observation = timed_func(self.state.deepCopy())
-                        except TimeoutFunctionException:
-                            skip_action = True
-                        move_time += time.time() - start_time
-                        self.unmute()
-                    except Exception,data:
-                        self._agentCrash(agentIndex, quiet=False)
-                        self.unmute()
-                        return
-                else:
-                    observation = agent.observationFunction(self.state.deepCopy())
-                self.unmute()
+                observation = agent.observationFunction(self.state.deepCopy())
             else:
                 observation = self.state.deepCopy()
 
             # Solicit an action
             action = None
-            self.mute(agentIndex)
-            if self.catchExceptions:
-                try:
-                    timed_func = TimeoutFunction(agent.getAction, int(self.rules.getMoveTimeout(agentIndex)) - int(move_time))
-                    try:
-                        start_time = time.time()
-                        if skip_action:
-                            raise TimeoutFunctionException()
-                        action = timed_func( observation )
-                    except TimeoutFunctionException:
-                        print >>sys.stderr, "Agent %d timed out on a single move!" % agentIndex
-                        self.agentTimeout = True
-                        self._agentCrash(agentIndex, quiet=True)
-                        self.unmute()
-                        return
-
-                    move_time += time.time() - start_time
-
-                    if move_time > self.rules.getMoveWarningTime(agentIndex):
-                        self.totalAgentTimeWarnings[agentIndex] += 1
-                        print >>sys.stderr, "Agent %d took too long to make a move! This is warning %d" % (agentIndex, self.totalAgentTimeWarnings[agentIndex])
-                        if self.totalAgentTimeWarnings[agentIndex] > self.rules.getMaxTimeWarnings(agentIndex):
-                            print >>sys.stderr, "Agent %d exceeded the maximum number of warnings: %d" % (agentIndex, self.totalAgentTimeWarnings[agentIndex])
-                            self.agentTimeout = True
-                            self._agentCrash(agentIndex, quiet=True)
-                            self.unmute()
-                            return
-
-                    self.totalAgentTimes[agentIndex] += move_time
-                    #print "Agent: %d, time: %f, total: %f" % (agentIndex, move_time, self.totalAgentTimes[agentIndex])
-                    if self.totalAgentTimes[agentIndex] > self.rules.getMaxTotalTime(agentIndex):
-                        print >>sys.stderr, "Agent %d ran out of time! (time: %1.2f)" % (agentIndex, self.totalAgentTimes[agentIndex])
-                        self.agentTimeout = True
-                        self._agentCrash(agentIndex, quiet=True)
-                        self.unmute()
-                        return
-                    self.unmute()
-                except Exception,data:
-                    self._agentCrash(agentIndex)
-                    self.unmute()
-                    return
-            else:
+            while action == None:
                 action = agent.getAction(observation)
-            self.unmute()
+                time.sleep(0.1)
 
             # Execute the action
             self.moveHistory.append( (agentIndex, action) )
-            if self.catchExceptions:
-                try:
-                    self.state = self.state.generateSuccessor( agentIndex, action )
-                except Exception,data:
-                    self.mute(agentIndex)
-                    self._agentCrash(agentIndex)
-                    self.unmute()
-                    return
-            else:
-                self.state = self.state.generateSuccessor( agentIndex, action )
+            self.state = self.state.generateSuccessor( agentIndex, action )
 
             # Change the display
             self.display.update( self.state.data )
@@ -722,7 +622,7 @@ class Game:
                     agent.final( self.state )
                     self.unmute()
                 except Exception,data:
-                    if not self.catchExceptions: raise
+                    raise
                     self._agentCrash(agentIndex)
                     self.unmute()
                     return
