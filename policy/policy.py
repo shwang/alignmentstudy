@@ -1,4 +1,5 @@
 import numpy as np
+import scipy
 
 # MINIMAL MDP
 # -----
@@ -20,6 +21,31 @@ inv_part = np.linalg.inv((I - gamma*P_pi))
 
 # SETTING UP THE LINEAR PROGRAM
 #
+def inverse_reinforcement_learn(N, gamma, lbda, pi, P_pi, list_P_a, R_max=1):
+    """
+    N is the number of states.
+    gamma is the discount factor.
+    lbda is the L1-norm penalty factor on the reward space.
+    pi, the optimal policy, is a N-lengthed list where pi[i] is the optimal action
+        at state i.
+    P_pi is an N x N matrix where P_pi[i, j] is the probability of
+        transitioning from state i to state j when following the
+        optimal policy.
+    list_P_a is an list where list_P_a[i] is the N x N transition
+        matrix for the policy of always taking action i. The list
+        has an entry for every action, and actions have a preset order.
+    """
+    bounds = reward_max_contraints(N, R_max)
+    A_ub, b_ub = irl_optimal_policy_contraints(N, gamma, P_pi, list_P_a)
+    def concat(A, b):
+        A_ub.concat(A)
+        b_ub.concat(b)
+    concat(*abs_aux_variables(N, gamma, P_pi, list_P_a))
+    concat(*max_Q_aux_variables(N, gamma, pi, P_pi, list_P_a))
+
+    C = objective_coefficients(N, lbda, P_pi, gamma)
+
+    return scipy.optimize.linprog(C, A_ub, b_ub, bounds=bounds)
 
 def variable_layout_shard(N):
     """
@@ -31,13 +57,14 @@ def variable_layout_shard(N):
     # The next N*N variables are the aux variables abs(R(i, j)).
     # The late N variables are the aux variables max(over a\a*, Q_pi(state i, a)).
 
-def reward_max_constraints_shard(N, bounds, R_max):
+def reward_max_constraints(N, R_max):
     """ Let's make the first N^2 variables the reward parameters. """
     bounds = np.zeros(N*N + N*N + N)
     for i in range(N*N):
         bounds[i] = -R_max, R_max
+    return bounds
 
-def irl_optimal_policy_constraints_shard(N, gamma, P_pi, list_P_a, inv_result=None):
+def irl_optimal_policy_constraints(N, gamma, P_pi, list_P_a, inv_result=None):
     """
     N is the number of states.
     gamma is the discount factor.
@@ -72,6 +99,8 @@ def irl_optimal_policy_constraints_shard(N, gamma, P_pi, list_P_a, inv_result=No
                     row = z + act_idx * N
                     A_ub[row, i*N + j] = -(temp[z, i] * P_pi[i, j] + P_diff[i, j])
 
+    return A_ub, b_ub
+
 def abs_aux_variables_shard(N, gamma, P_pi, list_P_a, inv_result=None):
     """
     N is the number of states.
@@ -93,6 +122,8 @@ def abs_aux_variables_shard(N, gamma, P_pi, list_P_a, inv_result=None):
             # So -abs(R(i, j)) - R(i,j) <= 0
             A_ub[row + 1, N*N + (i*N + j)] = -1
             A_ub[row + 1, i*N + j] = -1
+
+    return A_ub, b_ub
 
 def max_Q_aux_variables_shard(N, gamma, pi, P_pi, list_P_a, inv_result=None):
     """
@@ -138,6 +169,8 @@ def max_Q_aux_variables_shard(N, gamma, pi, P_pi, list_P_a, inv_result=None):
                     if i == s:
                         A_ub[row, i*N + j] += P_a[i, j]
 
+    return A_ub, b_ub
+
 def objective_coefficients_shard(N, lbda, P_pi, gamma=None, inv_result=None):
     C = np.zeros(N*N + N*N + N)
 
@@ -162,3 +195,5 @@ def objective_coefficients_shard(N, lbda, P_pi, gamma=None, inv_result=None):
     # To transform into a minimization, multiply every entry by -1.
     for i in len(C):
         C[i] *= -1
+
+    return C
