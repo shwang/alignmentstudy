@@ -181,6 +181,29 @@ class PacmanGraphics:
         # Information
         self.previousState = state
 
+    def initPolicy(self, game, agentIndex=0):
+        """Interactively allow user to choose an MDP policy."""
+        from keyboardAgents import KeyboardAgent
+        from graphicsUtils import keys_pressed
+        from searchAgents import searchGen
+
+        agent = game.agents[agentIndex]
+        def pollChoice(state):
+            action = None
+            while not action:
+                action = agent.getAction(state)
+                # self.blinkOn(state, agentIndex)  # TODO
+                time.sleep(0.1)
+            return action
+
+        policy = dict()
+        for state in searchGen(game):
+            state.data._agentMoved = 0  # Will need to be changed for multiplayer
+            self.update(state.data)
+            minState = (state.getPacmanPosition(), state.getFood())
+            policy[minState] = pollChoice(state)
+        return policy
+
     def startGraphics(self, state):
         self.layout = state.layout
         layout = self.layout
@@ -205,11 +228,10 @@ class PacmanGraphics:
                 distx.append(block)
         self.distributionImages = dist
 
-    def drawStaticObjects(self, state):
-        layout = self.layout
-        self.drawWalls(layout.walls)
-        self.food = self.drawFood(layout.food)
-        self.capsules = self.drawCapsules(layout.capsules)
+    def drawStaticObjects(self, stateData):
+        self.drawWalls(stateData.layout.walls)
+        self.food = self.drawFood(stateData.food)
+        self.capsules = self.drawCapsules(stateData.capsules)
         refresh()
 
     def drawAgentObjects(self, state):
@@ -224,6 +246,10 @@ class PacmanGraphics:
         refresh()
 
     def update(self, newState):
+        draw_background()
+        self.drawStaticObjects(newState)
+        self.drawAgentObjects(newState)
+        return
         agentIndex = newState._agentMoved
         agentState = newState.agentStates[agentIndex]
 

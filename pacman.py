@@ -275,11 +275,12 @@ class ClassicGameRules:
     def __init__(self, timeout=30):
         self.timeout = timeout
 
-    def newGame( self, layout, pacmanAgent, ghostAgents, display, quiet = False):
+    def newGame( self, layout, pacmanAgent, ghostAgents, display, quiet = False,
+                createPolicy=False):
         agents = [pacmanAgent] + ghostAgents[:layout.getNumGhosts()]
         initState = GameState()
         initState.initialize( layout, len(ghostAgents) )
-        game = Game(agents, display, self)
+        game = Game(agents, display, self, createPolicy=createPolicy)
         game.state = initState
         self.initialState = initState.deepCopy()
         self.quiet = quiet
@@ -525,6 +526,8 @@ def readCommand( argv ):
                       help=default('Time to delay between frames; <0 means keyboard'), default=0.1)
     parser.add_option('--timeout', dest='timeout', type='int',
                       help=default('Maximum length of time an agent can spend computing in a single game'), default=30)
+    parser.add_option('--createPolicy', dest='createPolicy', action='store_true',
+                help=default("If true, then solicit a player inputted policy for each reachable state."), default=False)
 
     options, otherjunk = parser.parse_args(argv)
     if len(otherjunk) != 0:
@@ -583,6 +586,8 @@ def readCommand( argv ):
         replayGame(**recorded)
         sys.exit(0)
 
+    args['createPolicy'] = options.createPolicy
+
     return args
 
 def loadAgent(pacman, nographics):
@@ -626,7 +631,8 @@ def replayGame( layout, actions, display ):
 
     display.finish()
 
-def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0, timeout=30 ):
+def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0, timeout=30,
+             createPolicy=False):
     import __main__
     __main__.__dict__['_display'] = display
 
@@ -643,7 +649,7 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
         else:
             gameDisplay = display
             rules.quiet = False
-        game = rules.newGame( layout, pacman, ghosts, gameDisplay, beQuiet)
+        game = rules.newGame( layout, pacman, ghosts, gameDisplay, beQuiet, createPolicy)
         game.run()
         if not beQuiet: games.append(game)
 

@@ -506,7 +506,8 @@ class Game:
     The Game manages the control flow, soliciting actions from agents.
     """
 
-    def __init__( self, agents, display, rules, startingIndex=0, muteAgents=False):
+    def __init__( self, agents, display, rules, startingIndex=0, muteAgents=False,
+                 createPolicy=True):
         self.agentCrashed = False
         self.agents = agents
         self.display = display
@@ -514,6 +515,7 @@ class Game:
         self.startingIndex = startingIndex
         self.gameOver = False
         self.muteAgents = muteAgents
+        self.createPolicy = createPolicy
         self.moveHistory = []
         self.totalAgentTimes = [0 for agent in agents]
         self.totalAgentTimeWarnings = [0 for agent in agents]
@@ -560,6 +562,11 @@ class Game:
         """
         self.display.initialize(self.state.data)
         self.numMoves = 0
+
+        from graphicsDisplay import PacmanGraphics
+        if self.createPolicy and 'initPolicy' in dir(self.display):
+            policy = self.display.initPolicy(self, 0)  # assume 0 is player
+            print(policy)
 
         ###self.display.initialize(self.state.makeObservation(1).data)
         # inform learning agents of the game start

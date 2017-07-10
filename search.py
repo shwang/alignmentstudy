@@ -93,6 +93,9 @@ def breadthFirstSearch(problem):
     "*** YOUR CODE HERE ***"
     return search(util.Queue(), problem)
 
+def bfsGen(problem):
+    return searchGen(util.Queue(), problem)
+
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"

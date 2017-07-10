@@ -421,7 +421,7 @@ class FoodSearchProblem:
             nextx, nexty = int(x + dx), int(y + dy)
             if not self.walls[nextx][nexty]:
                 nextFood = state[1].copy()
-                nextFood[nextx][nexty] = False
+                nextFood[nextx][nexty] = 0
                 successors.append( ( ((nextx, nexty), nextFood), direction, 1) )
         return successors
 
@@ -444,6 +444,39 @@ class AStarFoodSearchAgent(SearchAgent):
     def __init__(self):
         self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
         self.searchType = FoodSearchProblem
+
+# maybe belongs in pacman.GameState
+def genStates(self, game):
+    from searchAgents import searchGen
+    for pos, foodGrid in searchGen(game.state):
+        return self.convertBack(pos, foodGrid, game)
+
+# TODO: This is an ugly hack. Maybe it would be better to just iterate through all the
+# possible values of the problem state.
+def searchGen(game):
+        problem = FoodSearchProblem(game.state)
+        struct = util.Queue()
+        visited = set()
+
+        struct.push(search.Node(problem.getStartState()))
+        while not struct.isEmpty():
+            curr = struct.pop()
+
+            if curr.state in visited:
+                continue
+            visited.add(curr.state)
+            pos, food = curr.state
+            yield convertBack(pos, food, game)
+
+            for successor, action, cost in problem.getSuccessors(curr.state):
+                struct.push(search.Node(successor, action, curr))
+
+def convertBack(pos, food, game):
+    res = game.state.deepCopy()
+    res.pacmanPos = pos
+    res.data.agentStates[0].configuration.pos = pos
+    res.data.food = food
+    return res
 
 def foodHeuristic(state, problem):
     """
