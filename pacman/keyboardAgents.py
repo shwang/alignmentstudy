@@ -38,12 +38,13 @@ class KeyboardAgent(Agent):
     def getAction( self, state):
         from graphicsUtils import keys_pressed
         keys = keys_pressed()
-        if keys != []:
-            self.keys = keys
+        # if keys != []:  # Use this conditional to make Pacman continue in the same dir.
+        self.keys = keys
 
         legal = state.getLegalActions(self.index)
         move = self.getMove(legal)
 
+        print(move)
         return move
 
     def getMove(self, legal):
