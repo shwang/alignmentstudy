@@ -189,19 +189,30 @@ class PacmanGraphics:
 
         agent = game.agents[agentIndex]
         def pollChoice(state):
+            blink_show = True
+            blink_delay = 3
+            blink_tick = 0
+
             action = None
             while not action:
                 action = agent.getAction(state)
-                # self.blinkOn(state, agentIndex)  # TODO
                 time.sleep(0.1)
+
+                if blink_tick == blink_delay - 1:
+                    blink_show = not blink_show
+                    self.update(state.data, blink_show)
+                blink_tick = (blink_tick + 1) % blink_delay
+
             return action
 
         policy = dict()
         for state in searchGen(game):
-            state.data._agentMoved = 0  # Will need to be changed for multiplayer
+            # state.data._agentMoved = 0  # Will need to be changed for multiplayer
             self.update(state.data)
             minState = (state.getPacmanPosition(), state.getFood())
             policy[minState] = pollChoice(state)
+
+        self.blinkOn = False
         return policy
 
     def startGraphics(self, state):
@@ -234,10 +245,12 @@ class PacmanGraphics:
         self.capsules = self.drawCapsules(stateData.capsules)
         refresh()
 
-    def drawAgentObjects(self, state):
+    def drawAgentObjects(self, state, showPacman=True):
         self.agentImages = [] # (agentState, image)
         for index, agent in enumerate(state.agentStates):
             if agent.isPacman:
+                if not showPacman:
+                    continue
                 image = self.drawPacman(agent, index)
                 self.agentImages.append( (agent, image) )
             else:
@@ -245,10 +258,10 @@ class PacmanGraphics:
                 self.agentImages.append( (agent, image) )
         refresh()
 
-    def update(self, newState):
+    def update(self, newState, showPacman=True):
         draw_background()
         self.drawStaticObjects(newState)
-        self.drawAgentObjects(newState)
+        self.drawAgentObjects(newState, showPacman)
         return
         agentIndex = newState._agentMoved
         agentState = newState.agentStates[agentIndex]
