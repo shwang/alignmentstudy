@@ -18,13 +18,12 @@ def inverse_reinforcement_learn(N, gamma, lbda, pi, P_pi, list_P_a, R_max=1):
         has an entry for every action, and actions have a preset order.
     """
     bounds = reward_max_constraints(N, R_max)
-    A_ub, b_ub = irl_optimal_policy_constraints(N, gamma, P_pi, list_P_a)
-    def concat(A, b):
-        nonlocal A_ub, b_ub
-        A_ub = np.concatenate([A_ub, A])
-        b_ub = np.concatenate([b_ub, b])
-    concat(*abs_aux_variables(N))
-    concat(*max_Q_aux_variables(N, gamma, pi, P_pi, list_P_a))
+    a1, b1 = irl_optimal_policy_constraints(N, gamma, P_pi, list_P_a)
+    a2, b2 = abs_aux_variables(N)
+    a3, b3 = max_Q_aux_variables(N, gamma, pi, P_pi, list_P_a)
+
+    A_ub = np.concatenate([a1, a2, a3])
+    b_ub = np.concatenate([b1, b2, b3])
 
     C = objective_coefficients(N, lbda, P_pi, gamma)
     return scipy.optimize.linprog(C, A_ub, b_ub, bounds=bounds)

@@ -1,3 +1,4 @@
+from __future__ import division
 import unittest
 import numpy as np
 from policy import inverse_reinforcement_learn, reward_max_constraints, \
