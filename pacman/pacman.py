@@ -594,9 +594,9 @@ def loadAgent(pacman, nographics):
     # Looks through all pythonPath Directories for the right module,
     pythonPathStr = os.path.expandvars("$PYTHONPATH")
     if pythonPathStr.find(';') == -1:
-        pythonPathDirs = pythonPathStr.split(':')
+        pythonPathDirs = pythonPathStr.split(':') + ["./pacman"]
     else:
-        pythonPathDirs = pythonPathStr.split(';')
+        pythonPathDirs = pythonPathStr.split(';') + ["./pacman"]
     pythonPathDirs.append('.')
 
     for moduleDir in pythonPathDirs:
@@ -606,7 +606,12 @@ def loadAgent(pacman, nographics):
             try:
                 module = __import__(modulename[:-3])
             except ImportError:
-                continue
+                try:
+                    import importlib
+                    module = importlib.import_module("pacman." + modulename[:-3])
+                except ImportError:
+                    continue
+
             if pacman in dir(module):
                 if nographics and modulename == 'keyboardAgents.py':
                     raise Exception('Using the keyboard requires graphics (not text display)')

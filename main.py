@@ -1,0 +1,3 @@
+import pacman
+
+pacman.interactive()

@@ -131,17 +131,20 @@ class Layout:
              # numRobots += 1
              # self.robotPositions.append( (numRobots, (x, y) ) )
             print("ignoring CIRL robot")
-def getLayout(name, back = 2):
+def getLayout(name, back = 2, forward=True):
     if name.endswith('.lay'):
         layout = tryToLoad('layouts/' + name)
         if layout == None: layout = tryToLoad(name)
     else:
         layout = tryToLoad('layouts/' + name + '.lay')
         if layout == None: layout = tryToLoad(name + '.lay')
-    if layout == None and back >= 0:
+    if layout == None and forward:
+        os.chdir('pacman/')
+        layout = getLayout(name, back, False)
+    elif layout == None and back >= 0:
         curdir = os.path.abspath('.')
         os.chdir('..')
-        layout = getLayout(name, back -1)
+        layout = getLayout(name, back -1, False)
         os.chdir(curdir)
     return layout
 
