@@ -1,3 +1,3 @@
 import pacman
 
-pacman.interactive()
+raw_policy = pacman.interactive()

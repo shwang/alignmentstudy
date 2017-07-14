@@ -507,7 +507,7 @@ class Game:
     """
 
     def __init__( self, agents, display, rules, startingIndex=0, muteAgents=False,
-                 createPolicy=True):
+                 createPolicy=False):
         self.agentCrashed = False
         self.agents = agents
         self.display = display
@@ -566,7 +566,7 @@ class Game:
         from graphicsDisplay import PacmanGraphics
         if self.createPolicy and 'initPolicy' in dir(self.display):
             policy = self.display.initPolicy(self, 0)  # assume 0 is player
-            print(policy)
+            return policy
 
         ###self.display.initialize(self.state.makeObservation(1).data)
         # inform learning agents of the game start
