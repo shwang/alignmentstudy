@@ -44,7 +44,6 @@ class KeyboardAgent(Agent):
         legal = state.getLegalActions(self.index)
         move = self.getMove(legal)
 
-        print(move)
         return move
 
     def getMove(self, legal):

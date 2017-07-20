@@ -14,7 +14,8 @@
 
 from graphicsUtils import *
 import math, time
-from game import Directions
+from game import Directions, Grid
+from pacman import GameState
 
 ###########################
 #  GRAPHICS DISPLAY CODE  #
@@ -186,12 +187,15 @@ class PacmanGraphics:
         from keyboardAgents import KeyboardAgent
         from graphicsUtils import keys_pressed
         from searchAgents import searchGen
+        import itertools
 
         agent = game.agents[agentIndex]
         def pollChoice(state):
             blink_show = True
             blink_delay = 3
             blink_tick = 0
+
+            self.update(state.data)
 
             action = None
             while not action:
@@ -205,15 +209,63 @@ class PacmanGraphics:
 
             return action
 
+
+        wallsDict = game.state.getWalls().asValDict()
+        availablePos = set(wallsDict[False])
+
+        foodDict = game.state.getFood().asPosDict()
+        delKeys = []
+        # Eliminate entries that refer to locations without food
+        for k, v in foodDict.items():
+            if v in [0, False]:
+                delKeys.append(k)
+        for k in delKeys:
+            del foodDict[k]
+
+
+        minStates = []
+        for r in range(len(foodDict.items()) + 1):
+            for foodState in itertools.combinations(foodDict.items(), r):
+                # import pdb; pdb.set_trace()
+                print(foodState)
+                occupiedByFood = set()
+                for pos, _ in foodState:
+                    occupiedByFood.add(pos)
+                for pos in availablePos - occupiedByFood:
+                    minStates.append((pos, frozenset(foodState)))
+
         policy = dict()
-        for state in searchGen(game):
-            # state.data._agentMoved = 0  # Will need to be changed for multiplayer
-            self.update(state.data)
-            minState = (state.getPacmanPosition(), state.getFood())
-            policy[minState] = pollChoice(state)
+        for s in minStates:
+            state = GameState()
+            state.data = game.state.data.deepCopy()  # Passing data into __init__ makes
+                                                     # shallow copy instead of deep.
+            state.data.agentStates[0].configuration.pos = s[0]
+            state.data.food = Grid(state.data.food.width, state.data.food.height, 0)
+            for (x, y), foodVal in s[1]:
+                state.data.food[x][y] = foodVal
+
+            print(s)
+            policy[s] = pollChoice(state)
 
         self.blinkOn = False
         return policy
+
+# I will need to assign a ordering to the combinations of pos and foodState.
+# How can I assign a consistent reward to each state transition of eating
+# a single pellet, while still maintaining the value of a state that is
+# closer to eating a pellet than another?
+#
+# Maybe using features will solve this problem, as well as help scaling to
+# a larger state space?
+# Feature 0: pacman location
+# Feature 1: number of red pellets
+# Feature 2: number of blue pellets
+# Feature 3: locations of pellets
+# So rewards are based on changes in feature space (for example, a negative
+# reward for pacman location changing). But probability matrices are still
+# based on actual state?
+# Maybe this is just a new state representation...
+
 
     def startGraphics(self, state):
         self.layout = state.layout

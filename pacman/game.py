@@ -168,7 +168,6 @@ class Grid:
     The __str__ method constructs an output that is oriented like a pacman board.
     """
     def __init__(self, width, height, initialValue=False, bitRepresentation=None):
-        if initialValue not in [False, True]: raise Exception('Grids can only contain booleans')
         self.CELLS_PER_INT = 30
 
         self.width = width
@@ -225,6 +224,26 @@ class Grid:
             for y in range(self.height):
                 if self[x][y] == key: list.append( (x,y) )
         return list
+
+    def asPosDict(self):
+        res = {}
+        for x in range(self.width):
+            for y in range(self.height):
+                key = (x, y)
+                val = self[x][y]
+                # print(val)
+                res[key] = val
+        return res
+
+    def asValDict(self):
+        res = {}
+        for x in range(self.width):
+            for y in range(self.height):
+                key = self[x][y]
+                if not key in res:
+                    res[key] = []
+                res[key].append((x, y))
+        return res
 
     def packBits(self):
         """
@@ -566,7 +585,8 @@ class Game:
         from graphicsDisplay import PacmanGraphics
         if self.createPolicy and 'initPolicy' in dir(self.display):
             policy = self.display.initPolicy(self, 0)  # assume 0 is player
-            return policy
+            return policy, self
+
 
         ###self.display.initialize(self.state.makeObservation(1).data)
         # inform learning agents of the game start
